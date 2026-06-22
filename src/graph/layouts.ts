@@ -9,7 +9,32 @@ export interface LayoutPreset {
 
 const animate = { animate: true as const, animationDuration: 350 };
 
+/** Continuous, interactive physics. Handled specially by the graph view
+ *  (run on visible elements, kept alive so drags and filters re-settle). */
+export const PHYSICS_LAYOUT_ID = "physics";
+
+/** Build cola options for the live physics simulation. */
+export function physicsOptions(randomize: boolean): cytoscape.LayoutOptions {
+  return {
+    name: "cola",
+    infinite: true,
+    fit: false,
+    animate: true,
+    randomize,
+    avoidOverlap: true,
+    handleDisconnected: true,
+    centerGraph: false, // don't recenter every tick — keeps drags stable
+    nodeSpacing: () => 12,
+    edgeLength: 95,
+  } as unknown as cytoscape.LayoutOptions;
+}
+
 export const LAYOUTS: LayoutPreset[] = [
+  {
+    id: PHYSICS_LAYOUT_ID,
+    label: "Physics (live)",
+    options: () => physicsOptions(false),
+  },
   {
     id: "fcose",
     label: "Force",

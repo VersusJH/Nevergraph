@@ -38,6 +38,9 @@ confirm or override every choice:
 
 ## Features
 
+- **Live physics (default):** a continuous force simulation where dragging a
+  node pushes its neighbours and filtering lets the graph re-settle into the
+  freed space. Switch to a static layout any time.
 - Force, hierarchy (DAG), concentric, circle and grid layouts.
 - Colour by node type or any category facet; shape by node type; size by degree
   or a numeric field; directed-edge arrowheads; legend.
@@ -91,8 +94,9 @@ Data flow: **raw JSON → `DatasetCatalog` (introspection) → `MappingProfile`
 (guided wizard) → `GraphModel` (`buildGraph`) → Cytoscape render**.
 
 Rendering uses [Cytoscape.js](https://js.cytoscape.org/) with the `fcose` and
-`dagre` layout extensions. There is no UI framework — the interactive canvas is
-Cytoscape and the surrounding chrome is plain TypeScript + CSS.
+`dagre` layout extensions, plus `cola` for the continuous live-physics
+simulation. There is no UI framework — the interactive canvas is Cytoscape and
+the surrounding chrome is plain TypeScript + CSS.
 
 ## Tests
 

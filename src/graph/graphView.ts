@@ -1,17 +1,19 @@
 import cytoscape from "cytoscape";
 import fcose from "cytoscape-fcose";
 import dagre from "cytoscape-dagre";
+import cola from "cytoscape-cola";
 import type { GNode, GraphModel } from "../types";
 import type { EncodingConfig, FilterState, Selection } from "../state";
 import { applyEncoding, baseStylesheet, type LegendData } from "./style";
 import { toElements } from "./elements";
-import { layoutById } from "./layouts";
+import { layoutById, physicsOptions, PHYSICS_LAYOUT_ID } from "./layouts";
 
 let registered = false;
 function registerExtensions(): void {
   if (registered) return;
   cytoscape.use(fcose);
   cytoscape.use(dagre);
+  cytoscape.use(cola);
   registered = true;
 }
 
@@ -52,6 +54,52 @@ export function createGraphView(
   let filters: FilterState | null = null;
   let focusId: string | null = null;
   let lastTap = { id: "", t: 0 };
+
+  // Live physics (cytoscape-cola, kept running so drags + filters re-settle).
+  let physicsOn = false;
+  let physicsSim: cytoscape.Layouts | null = null;
+  let lastHiddenSig = "";
+
+  const hiddenSig = (): string =>
+    cy
+      .nodes(".hidden")
+      .map((n) => n.id())
+      .sort()
+      .join("|");
+
+  function stopPhysics(): void {
+    physicsSim?.stop();
+    physicsSim = null;
+  }
+
+  /** (Re)start the continuous simulation over the currently-visible nodes. */
+  function startPhysics(randomize: boolean): void {
+    stopPhysics();
+    const eles = cy.elements(":visible");
+    if (eles.length === 0) return;
+    physicsSim = eles.layout(physicsOptions(randomize));
+    physicsSim.run();
+    lastHiddenSig = hiddenSig();
+  }
+
+  function runLayoutInternal(id: string, isInitial: boolean): void {
+    if (id === PHYSICS_LAYOUT_ID) {
+      physicsOn = true;
+      if (isInitial) {
+        // Seed with a quick force layout for good initial placement, then go
+        // live so subsequent drags and filters re-settle with physics.
+        const seed = cy.layout(layoutById("fcose").options());
+        seed.one("layoutstop", () => startPhysics(false));
+        seed.run();
+      } else {
+        startPhysics(false);
+      }
+    } else {
+      physicsOn = false;
+      stopPhysics();
+      cy.layout(layoutById(id).options()).run();
+    }
+  }
 
   // ---------------------------- tooltip -----------------------------
   const tip = document.createElement("div");
@@ -129,7 +177,9 @@ export function createGraphView(
     hideTip();
     void e;
   });
-  cy.on("pan zoom drag position", () => hideTip());
+  // Note: not "position" — under live physics that fires every frame and would
+  // hide tooltips constantly. Pan/zoom/drag are user-initiated.
+  cy.on("pan zoom drag", () => hideTip());
 
   cy.on("tap", "node", (e) => {
     const node = e.target as cytoscape.NodeSingular;
@@ -232,6 +282,10 @@ export function createGraphView(
         }
       });
     });
+
+    // When hiding/showing changes the visible set, re-settle physics so the
+    // remaining nodes reflow into (or out of) the freed space.
+    if (physicsOn && hiddenSig() !== lastHiddenSig) startPhysics(false);
   }
 
   function doFocus(id: string): void {
@@ -248,21 +302,23 @@ export function createGraphView(
 
   return {
     setGraph(g, layoutId, enc) {
+      stopPhysics();
       graph = g;
       nodeById = new Map(g.nodes.map((n) => [n.id, n]));
       focusId = null;
+      lastHiddenSig = "";
       cy.elements().remove();
       const { nodes, edges } = toElements(g);
       cy.add(nodes);
       cy.add(edges);
       cb.onLegend(applyEncoding(cy, g, enc));
-      cy.layout(layoutById(layoutId).options()).run();
+      runLayoutInternal(layoutId, true);
     },
     setEncoding(enc) {
       if (graph) cb.onLegend(applyEncoding(cy, graph, enc));
     },
     runLayout(id) {
-      cy.layout(layoutById(id).options()).run();
+      runLayoutInternal(id, false);
     },
     applyFilters(f) {
       filters = f;
@@ -284,6 +340,7 @@ export function createGraphView(
     },
     getCy: () => cy,
     destroy() {
+      stopPhysics();
       tip.remove();
       menu.remove();
       cy.destroy();

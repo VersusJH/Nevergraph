@@ -87,6 +87,15 @@ try {
   assert(nw.e === 5, `neverwas edges = ${nw.e} (want 5)`);
   assert(nw.report.danglingRefs.length === 0, `neverwas dangling = ${nw.report.danglingRefs.length}`);
 
+  // ---- stabilise with a static layout before position-sensitive checks ----
+  // (default layout is now live physics, where nodes keep drifting).
+  await page.evaluate(() => {
+    const sel = document.querySelectorAll(".toolbar-mid select")[0];
+    sel.value = "fcose";
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await sleep(1300);
+
   // ---- click a node -> detail panel ----
   const pos = await page.evaluate(() => {
     const n = window.__cy.nodes().sort((a, b) => b.degree() - a.degree()).first();
@@ -160,6 +169,59 @@ try {
     await vpage.screenshot({ path: `${SHOT_DIR}/09-exported.png` });
     assert(vErrors.length === 0, `exported viewer: no errors (${vErrors.length}): ${vErrors.slice(0, 2).join(" | ")}`);
     await vpage.close();
+  }
+
+  // ---- live physics: dragging a node should push its neighbours ----
+  await page.evaluate(() => {
+    const sel = document.querySelectorAll(".toolbar-mid select")[0];
+    sel.value = "physics";
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await sleep(2400); // let the simulation settle
+  const drag = await page.evaluate(() => {
+    const A = window.__cy.nodes(":visible").sort((a, b) => b.degree() - a.degree()).first();
+    const B = A.neighborhood("node:visible").first();
+    const rect = document.querySelector(".cy").getBoundingClientRect();
+    const rp = A.renderedPosition();
+    return {
+      ax: rect.left + rp.x,
+      ay: rect.top + rp.y,
+      aId: A.id(),
+      bId: B.id(),
+      aBefore: { ...A.position() },
+      bBefore: { ...B.position() },
+      ok: A.nonempty() && B.nonempty(),
+    };
+  });
+  assert(drag.ok, "found a node with a visible neighbour for the physics test");
+  if (drag.ok) {
+    // Hover (no drag) must NOT move neighbours — the wobble regression.
+    await page.mouse.move(drag.ax, drag.ay);
+    await sleep(900);
+    const hoverDrift = await page.evaluate((bId, before) => {
+      const p = window.__cy.getElementById(bId).position();
+      return Math.hypot(p.x - before.x, p.y - before.y);
+    }, drag.bId, drag.bBefore);
+    assert(hoverDrift < 5, `no wobble on hover (neighbour drifted ${hoverDrift.toFixed(1)}px)`);
+    await page.mouse.move(5, 5); // move off the node before dragging
+    // Grab A and hold it far away; while held, the edge force should pull B.
+    await page.mouse.move(drag.ax, drag.ay);
+    await page.mouse.down();
+    for (let i = 1; i <= 12; i++) {
+      await page.mouse.move(drag.ax + i * 22, drag.ay - i * 14);
+      await sleep(25);
+    }
+    await sleep(700); // hold — let physics relax neighbours toward A
+    const held = await page.evaluate((aId, bId) => ({
+      a: { ...window.__cy.getElementById(aId).position() },
+      b: { ...window.__cy.getElementById(bId).position() },
+    }), drag.aId, drag.bId);
+    await page.mouse.up();
+    const aMoved = Math.hypot(held.a.x - drag.aBefore.x, held.a.y - drag.aBefore.y);
+    const bMoved = Math.hypot(held.b.x - drag.bBefore.x, held.b.y - drag.bBefore.y);
+    assert(aMoved > 20, `dragged node moved (${aMoved.toFixed(1)}px — confirms grab)`);
+    assert(bMoved > 8, `neighbour bounced via physics while held (${bMoved.toFixed(1)}px)`);
+    await page.screenshot({ path: `${SHOT_DIR}/10-physics.png` });
   }
 
   // ---- LARP dataset ----

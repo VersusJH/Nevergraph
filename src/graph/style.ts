@@ -56,7 +56,7 @@ export function baseStylesheet(): unknown[] {
         "text-background-opacity": 0.55,
         "text-background-padding": "1px",
         "min-zoomed-font-size": 7,
-        "border-width": 1.5,
+        "border-width": 2,
         "border-color": "#0b0e14",
         "transition-property": "opacity",
         "transition-duration": "0.15s",
@@ -75,9 +75,16 @@ export function baseStylesheet(): unknown[] {
         opacity: 0.5,
       },
     },
+    // Interaction states must NOT change node geometry (border-width / size):
+    // under the live physics layout, a bbox change perturbs avoid-overlap and
+    // makes the graph wobble on hover. Differentiate by colour / fill only.
     {
       selector: "node:selected",
-      style: { "border-width": 3, "border-color": "#ffffff", "z-index": 20 },
+      style: {
+        "border-color": "#ffffff",
+        "background-blacken": -0.25,
+        "z-index": 20,
+      },
     },
     {
       selector: "edge:selected",
@@ -91,13 +98,13 @@ export function baseStylesheet(): unknown[] {
     },
     {
       selector: "node.highlight",
-      style: { "border-width": 3, "border-color": "#ffffff", "z-index": 15 },
+      style: { "border-color": "#ffffff", "z-index": 15 },
     },
     { selector: "edge.highlight", style: { opacity: 1, width: 2.5, "z-index": 15 } },
     { selector: ".dimmed", style: { opacity: 0.08, "text-opacity": 0.04 } },
     {
       selector: "node.pinned",
-      style: { "border-color": "#f4a259", "border-width": 3 },
+      style: { "border-color": "#f4a259" },
     },
     { selector: ".hidden", style: { display: "none" } },
   ];

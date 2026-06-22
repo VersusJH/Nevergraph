@@ -111,7 +111,7 @@ function buildAndShow(profile: MappingProfile): void {
     graph,
     filters: fresh.filters,
     encoding: fresh.encoding,
-    layout: graph.edgeTypes.length && graph.nodeTypes.length > 1 ? "fcose" : fresh.layout,
+    layout: fresh.layout,
   });
   showGraph(graph);
   reportToast(graph);

@@ -59,7 +59,7 @@ export function initialState(): AppState {
       search: "",
       mode: "hide",
     },
-    layout: "fcose",
+    layout: "physics",
   };
 }
 
