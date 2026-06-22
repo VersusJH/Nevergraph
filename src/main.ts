@@ -83,8 +83,7 @@ function showWizard(): void {
   store.set({ view: "wizard" });
   const s = store.get();
   const wizard = renderWizard(s.catalog!, s.profile!, {
-    computeReport: (profile) =>
-      buildGraph(s.rawData!, s.catalog!, profile).report,
+    preview: (profile) => buildGraph(s.rawData!, s.catalog!, profile),
     onConfirm: (profile) => {
       store.set({ profile });
       buildAndShow(profile);

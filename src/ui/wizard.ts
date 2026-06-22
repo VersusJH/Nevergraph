@@ -4,8 +4,8 @@ import type {
   CollectionMapping,
   DatasetCatalog,
   FieldInfo,
+  GraphModel,
   MappingProfile,
-  ValidationReport,
 } from "../types";
 import { suggestProfile } from "../mapping/suggest";
 import { downloadJson, pickFile } from "../io/download";
@@ -13,7 +13,9 @@ import { isMappingProfile } from "../io/profileStore";
 
 export interface WizardCallbacks {
   onConfirm: (profile: MappingProfile) => void;
-  computeReport: (profile: MappingProfile) => ValidationReport;
+  /** Build the graph for the current profile (drives the live preview and the
+   *  list of actual resulting node types). */
+  preview: (profile: MappingProfile) => GraphModel;
   notify?: (msg: string) => void;
 }
 
@@ -25,6 +27,9 @@ export function renderWizard(
   cb: WizardCallbacks,
 ): HTMLElement {
   let profile = clone(baseProfile);
+  // Actual node types the current profile produces (accounts for "Split types
+  // by"). Recomputed on each structural rerender; drives arc target-type lists.
+  let resultingTypes: string[] = [];
   const catByName = new Map(catalog.collections.map((c) => [c.name, c]));
 
   const root = h("div", { class: "wizard" });
@@ -211,8 +216,8 @@ export function renderWizard(
           },
           [
             opt("", "any", !existing.targetType),
-            ...profile.collections.map((c) =>
-              opt(c.nodeType, c.nodeType, existing.targetType === c.nodeType),
+            ...resultingTypes.map((t) =>
+              opt(t, t, existing.targetType === t),
             ),
           ],
         ),
@@ -251,6 +256,7 @@ export function renderWizard(
       (f) =>
         f.path !== m.idField &&
         f.path !== m.labelField &&
+        f.path !== m.typeField && // a split field is the node type, not a facet
         ((f.kind === "scalar" &&
           (f.valueType === "string" || f.valueType === "boolean")) ||
           (f.kind === "array-scalar" && f.distinctCount > 0)),
@@ -308,11 +314,16 @@ export function renderWizard(
       labeled(
         "Split types by",
         fieldSelect(
-          scalars.filter((f) => f.distinctCount <= 40),
+          scalars.filter((f) => f.path !== m.idField && f.distinctCount <= 40),
           m.typeField ?? "",
           (v) => {
             m.typeField = v === "" ? undefined : v;
-            updatePreview();
+            // A field that defines the node type shouldn't also be a facet.
+            if (m.typeField)
+              m.categoryFields = m.categoryFields.filter(
+                (x) => x !== m.typeField,
+              );
+            rerender(); // changes node types, facets and arc target lists
           },
           true,
           "(use one type)",
@@ -378,23 +389,43 @@ export function renderWizard(
     ]);
   }
 
+  function computeGraph(): GraphModel | null {
+    try {
+      return cb.preview(profile);
+    } catch {
+      return null;
+    }
+  }
+
   function rerender(): void {
+    const g = computeGraph();
+    resultingTypes = g ? g.nodeTypes : [];
+    // Drop arc target-type constraints that no longer match a real node type
+    // (e.g. after changing a "Split types by" field).
+    if (g) {
+      for (const c of profile.collections)
+        for (const a of c.arcs)
+          if (a.targetType && !resultingTypes.includes(a.targetType))
+            a.targetType = undefined;
+    }
     clear(body);
     for (const m of profile.collections) body.append(collectionSection(m));
-    updatePreview();
+    renderPreview(g);
   }
 
   function updatePreview(): void {
+    renderPreview(computeGraph());
+  }
+
+  function renderPreview(g: GraphModel | null): void {
     clear(footer);
-    let report: ValidationReport;
-    try {
-      report = cb.computeReport(profile);
-    } catch (err) {
+    if (!g) {
       footer.append(
-        h("span", { class: "preview-error" }, `Preview error: ${String(err)}`),
+        h("span", { class: "preview-error" }, "Preview error — check the mapping."),
       );
       return;
     }
+    const report = g.report;
     const warn: string[] = [];
     if (report.danglingRefs.length)
       warn.push(`${report.danglingRefs.length} dangling refs`);

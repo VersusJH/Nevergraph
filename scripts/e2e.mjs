@@ -271,6 +271,51 @@ try {
   assert(larp.e > 0, `larp edges = ${larp.e}`);
   await page.screenshot({ path: `${SHOT_DIR}/08-larp.png` });
 
+  // ---- "Split types by" — node types come from a field, not the collection ----
+  await page.goto(URL, { waitUntil: "networkidle0" });
+  await page.$$eval(
+    ".example-card",
+    (els, label) => els.find((e) => e.textContent.includes(label)).click(),
+    "Neverwas",
+  );
+  await page.waitForSelector(".wizard", { timeout: 8000 });
+  const setSplit = await page.evaluate(() => {
+    const card = [...document.querySelectorAll(".coll-card")].find(
+      (c) => c.querySelector(".coll-title strong")?.textContent === "storylets",
+    );
+    const lab = [...card.querySelectorAll(".w-labeled")].find(
+      (l) => l.querySelector(".w-label")?.textContent === "Split types by",
+    );
+    const sel = lab.querySelector("select");
+    sel.value = "type";
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  });
+  assert(setSplit, "found and set the storylets 'Split types by' control");
+  await sleep(400);
+  const wiz = await page.evaluate(() => {
+    const card = [...document.querySelectorAll(".coll-card")].find(
+      (c) => c.querySelector(".coll-title strong")?.textContent === "storylets",
+    );
+    const targetOpts = [...card.querySelectorAll(".w-labeled")]
+      .filter((l) => l.querySelector(".w-label")?.textContent === "Target type")
+      .flatMap((l) => [...l.querySelectorAll("option")].map((o) => o.value));
+    const chips = [...card.querySelectorAll(".chip")].map((c) => c.textContent);
+    return { targetOpts, chips };
+  });
+  assert(wiz.targetOpts.includes("zone"), `arc target-type list reflects split types (has 'zone')`);
+  assert(!wiz.chips.some((c) => c.startsWith("type (")), `split field removed from category chips`);
+  await page.click(".btn-primary");
+  await page.waitForFunction(() => window.__cy && window.__cy.nodes().length > 0, { timeout: 10000 });
+  const splitTypes = await page.evaluate(() => window.__nevergraph().graph.nodeTypes);
+  assert(
+    ["end", "list", "zone"].every((t) => splitTypes.includes(t)) &&
+      splitTypes.includes("item") &&
+      !splitTypes.includes("storylet"),
+    `split node types = [${splitTypes.join(",")}]`,
+  );
+  await page.screenshot({ path: `${SHOT_DIR}/11-split.png` });
+
   assert(pageErrors.length === 0, `no page errors (${pageErrors.length}): ${pageErrors.slice(0, 3).join(" | ")}`);
 } catch (err) {
   fail(`exception: ${err.stack || err}`);
