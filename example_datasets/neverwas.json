@@ -1,0 +1,119 @@
+{
+    "items": [
+        {
+            "id": "ba02b1c0-8d04-4c37-b415-67398d7bf0e1",
+            "lastUpdate": "2023-09-27 22:25:51.422390",
+            "name": "Not yet",
+            "description": "One day, mayhaps, you will walk this path. Unless its memory fades beforehand...",
+            "tags": [
+                "unobtainable"
+            ],
+            "asset": "magicbook"
+        },
+        {
+            "id": "695f1b48-ed66-43d0-8722-099cb5a2984e",
+            "lastUpdate": "2023-09-27 22:25:51.422390",
+            "name": "A future memory",
+            "description": "Some call it insight, some precognition; and yet neither of those usually carry so much nostalgia for something yet to happen.",
+            "tags": [
+                "story"
+            ],
+            "asset": "magicbook"
+        },
+        {
+            "id": "4cd2be8c-a98a-47cc-a7b4-bdef1f3c44ac",
+            "lastUpdate": "2023-09-27 22:25:51.422390",
+            "name": "Nevertale",
+            "description": "Nevertales are memories that linger once forgotten by their owners. They're highly sought after by collectors and escapists.",
+            "tags": [
+                "tradeable"
+            ],
+            "asset": "magicbook"
+        }
+    ],
+    "storylets": [
+        {
+            "id": "8247dccb-97e1-4d28-af63-d44f7db04c49",
+            "lastUpdate": "2023-09-28 12:40:01.699293",
+            "title": "A road yet untrodden",
+            "description": "This path does not exist yet. In time, you may be the first to walk it; but for now, you too, must wait.",
+            "text": "Trying to force fate's hand is rarely ever a fruitful endeavour - and today is not the day you join the ranks of those who thwarted destiny.",
+            "type": "end",
+            "asset": "magicbook",
+            "viewLocks": [],
+            "itemLocks": [
+              {
+                "itemID": "ba02b1c0-8d04-4c37-b415-67398d7bf0e1",
+                "value": 1,
+                "isConsumed": false
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "4320183f-3b98-4810-b440-ac290ff9dbdc",
+            "lastUpdate": "2023-09-28 15:58:58.693811",
+            "title": "Ashore",
+            "description": "The haze of unconsciousness leaves your mind slowly, as though you are remembering a dream, rather than awakening.",
+            "text": "You awake on a sandy beach. The waves lick at your feet with each sweep of the tide, while salt and sea cling to your skin as though the depths still quite refuse to let you go.",
+            "type": "zone",
+            "asset": "zone-ashore",
+            "viewLocks": [],
+            "itemLocks": [],
+            "children": [
+              {
+                "id": "263cfd54-7a28-4f71-b300-bb2ad3f23755"
+              },
+              {
+                "id": "30ed079e-9683-4efe-b520-bf3ad9add923"
+              }
+            ]
+          },
+          {
+            "id": "263cfd54-7a28-4f71-b300-bb2ad3f23755",
+            "lastUpdate": "2023-09-28 16:08:20.730166",
+            "title": "In front of you",
+            "description": "Though dazed and exhausted, you get to your feet. The island stretches before you, while an elderly woman looks down on you in judgement from a couple paces away.",
+            "text": "  You've been here before. You had forgotten, as everyone does; and now you remember it, a dream recalled through the fog of life: the island of Neverwas, make-believe come true.\n\n  The woman has no patience for your dazed awe: she's clearly seen many like you. «You need not say» she speaks, shaking her head.\n\n  A lock of gray, thin and time-worn hair escapes her hairband, framing her otherwise youthful face. «The Neversea chewed you a bit and did not like yer taste. Not the first and won't be the last - it's gotten picky in the last few years. Lucky, I'd say, but that'll be yours to decide. How'd ya get dropped in anyway?»    ",
+            "type": "list",
+            "asset": "written",
+            "viewLocks": [],
+            "itemLocks": [],
+            "children": [
+              {
+                "id": "a68cea26-cbb9-479a-a5aa-314bb222eb3f"
+              }
+            ]
+          },
+          {
+            "id": "30ed079e-9683-4efe-b520-bf3ad9add923",
+            "lastUpdate": "2023-09-28 13:09:27.535184",
+            "title": "A foreknowledge",
+            "description": "One day you might find yourself here once more, just as lost but armed with knowledge still precluded to you.",
+            "text": "A new page - or an old one, scrubbed clean, ready to be overwritten. Your feet lead you away surely. You don't need the woman's words to guide you this time: you are enough. ",
+            "type": "list",
+            "asset": "magicbook",
+            "viewLocks": [],
+            "itemLocks": [
+              {
+                "itemID": "ba02b1c0-8d04-4c37-b415-67398d7bf0e1",
+                "value": 1,
+                "isConsumed": false
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "a68cea26-cbb9-479a-a5aa-314bb222eb3f",
+            "lastUpdate": "2023-09-28 13:12:24.664189",
+            "title": "A sacrifice",
+            "description": "You offered yourself to save a loved one from a shadow - it must have dropped you in the sea on the way here.",
+            "text": "«The island always took people, even before the Fall» she nods, her eyes crinkling around the corners with a mixture of sadness and something nameless and ancient. «Shadows are even worse. Wendy taught Peter how to sew them back - but the girl had never been so proficient at it herself, so here we are. What do they call ye?»",
+            "type": "list",
+            "asset": "magicbook",
+            "viewLocks": [],
+            "itemLocks": [],
+            "children": []
+          }
+    ]
+}
