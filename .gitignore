@@ -1,0 +1,5 @@
+node_modules/
+dist/
+src/export/_generated/
+*.local
+.DS_Store
