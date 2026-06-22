@@ -39,6 +39,7 @@ const server = spawn(
 );
 
 let browser;
+const pageErrors = [];
 try {
   await waitServer();
   browser = await puppeteer.launch({
@@ -48,7 +49,6 @@ try {
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900 });
-  const pageErrors = [];
   page.on("pageerror", (e) => pageErrors.push(String(e)));
   page.on("console", (m) => m.type() === "error" && pageErrors.push(m.text()));
 
@@ -128,6 +128,34 @@ try {
   const legendText = await page.$eval(".legend", (e) => e.textContent);
   assert(/asset/i.test(legendText), `legend reflects colour-by asset`);
   await page.screenshot({ path: `${SHOT_DIR}/06-colorby.png` });
+
+  // ---- independent shape + pattern channels (colour stays = asset) ----
+  await page.evaluate(() => {
+    const sels = document.querySelectorAll(".toolbar-mid select");
+    sels[2].value = "type"; // Shape
+    sels[2].dispatchEvent(new Event("change", { bubbles: true }));
+    sels[3].value = "type"; // Pattern
+    sels[3].dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await sleep(400);
+  const enc = await page.evaluate(() => {
+    const ns = window.__cy.nodes();
+    const byShape = {};
+    ns.forEach((n) => {
+      (byShape[n.data("shape")] ??= new Set()).add(n.data("color"));
+    });
+    return {
+      shapes: new Set(ns.map((n) => n.data("shape"))).size,
+      allPatterned: ns.every((n) =>
+        (n.data("pattern") || "").startsWith("data:image/svg"),
+      ),
+      maxColoursPerShape: Math.max(...Object.values(byShape).map((s) => s.size)),
+    };
+  });
+  assert(enc.shapes === 2, `shape-by type → ${enc.shapes} distinct shapes`);
+  assert(enc.allPatterned, `pattern-by type → every node textured`);
+  assert(enc.maxColoursPerShape >= 2, `colour independent of shape (one shape spans ${enc.maxColoursPerShape} colours)`);
+  await page.screenshot({ path: `${SHOT_DIR}/06b-channels.png` });
 
   // ---- filter: hide first node type ----
   const beforeHidden = await page.evaluate(() => window.__cy.elements(".hidden").length);
@@ -247,6 +275,7 @@ try {
 } catch (err) {
   fail(`exception: ${err.stack || err}`);
 } finally {
+  if (pageErrors.length) console.error("PAGE ERRORS:\n" + pageErrors.join("\n"));
   if (browser) await browser.close();
   server.kill("SIGTERM");
 }

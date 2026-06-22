@@ -42,8 +42,11 @@ confirm or override every choice:
   node pushes its neighbours and filtering lets the graph re-settle into the
   freed space. Switch to a static layout any time.
 - Force, hierarchy (DAG), concentric, circle and grid layouts.
-- Colour by node type or any category facet; shape by node type; size by degree
-  or a numeric field; directed-edge arrowheads; legend.
+- **Three independent encoding channels** — colour, shape and pattern (SVG
+  texture) can each be bound to node type or any category facet, so you can show
+  several categorisations at once (e.g. colour by faction, shape by role,
+  pattern by status). Plus size by degree or a numeric field, directed-edge
+  arrowheads, and a multi-section legend.
 - Drag, hover-highlight + tooltip, click-to-select with a full detail panel
   (all fields, long text, clickable in/out neighbours), right-click context
   menu (focus neighbourhood, hide, pin), double-click to focus.

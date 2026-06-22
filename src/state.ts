@@ -12,6 +12,10 @@ export type SizeBy = "uniform" | "degree" | string; // string => numeric field
 export interface EncodingConfig {
   /** "type" or a facet name. */
   colorBy: string;
+  /** "type", "uniform", or a facet name. */
+  shapeBy: string;
+  /** "none", "type", or a facet name. */
+  patternBy: string;
   sizeBy: SizeBy;
 }
 
@@ -51,7 +55,7 @@ export function initialState(): AppState {
     profile: null,
     graph: null,
     selection: null,
-    encoding: { colorBy: "type", sizeBy: "degree" },
+    encoding: { colorBy: "type", shapeBy: "type", patternBy: "none", sizeBy: "degree" },
     filters: {
       hiddenNodeTypes: new Set(),
       hiddenEdgeTypes: new Set(),

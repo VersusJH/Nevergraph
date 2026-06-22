@@ -45,7 +45,7 @@ if (!payload || !payload.graph) {
 function boot(p: Payload): void {
   const graph = p.graph;
   const state = initialState();
-  state.encoding = p.encoding;
+  state.encoding = { ...state.encoding, ...p.encoding };
   state.layout = p.layout;
   state.fileName = p.fileName ?? null;
 
@@ -76,6 +76,24 @@ function boot(p: Payload): void {
         state.encoding.colorBy,
         (v) => {
           state.encoding.colorBy = v;
+          graphView.setEncoding(state.encoding);
+        },
+      ),
+      control(
+        "Shape",
+        ["type", "uniform", ...Object.keys(graph.facets)].map((o) => [o, o]),
+        state.encoding.shapeBy,
+        (v) => {
+          state.encoding.shapeBy = v;
+          graphView.setEncoding(state.encoding);
+        },
+      ),
+      control(
+        "Pattern",
+        ["none", "type", ...Object.keys(graph.facets)].map((o) => [o, o]),
+        state.encoding.patternBy,
+        (v) => {
+          state.encoding.patternBy = v;
           graphView.setEncoding(state.encoding);
         },
       ),

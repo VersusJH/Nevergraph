@@ -27,6 +27,7 @@ export function toElements(graph: GraphModel): BuiltElements {
       color: "#7c9eff",
       shape: "ellipse",
       size: 26,
+      pattern: "",
     },
   }));
 

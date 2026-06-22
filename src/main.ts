@@ -144,6 +144,14 @@ function showGraph(graph: GraphModel): void {
       store.update((s) => (s.encoding.colorBy = v));
       graphView?.setEncoding(store.get().encoding);
     },
+    onShapeBy: (v) => {
+      store.update((s) => (s.encoding.shapeBy = v));
+      graphView?.setEncoding(store.get().encoding);
+    },
+    onPatternBy: (v) => {
+      store.update((s) => (s.encoding.patternBy = v));
+      graphView?.setEncoding(store.get().encoding);
+    },
     onSizeBy: (v) => {
       store.update((s) => (s.encoding.sizeBy = v));
       graphView?.setEncoding(store.get().encoding);

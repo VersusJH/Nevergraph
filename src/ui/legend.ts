@@ -1,19 +1,28 @@
 import { h, clear } from "./dom";
-import type { LegendData, LegendItem } from "../graph/style";
+import type { LegendData, LegendGroup, LegendItem } from "../graph/style";
+import { NO_VALUE_COLOR } from "../graph/palette";
 
 export interface Legend {
   element: HTMLElement;
   update: (data: LegendData) => void;
 }
 
+const SHAPE_NEUTRAL = "#9aa7ff";
+
 export function createLegend(): Legend {
   const element = h("div", { class: "legend" });
 
-  function swatch(item: LegendItem): HTMLElement {
+  function swatch(item: LegendItem, channel: LegendGroup["channel"]): HTMLElement {
+    const base =
+      channel === "color" ? (item.color ?? NO_VALUE_COLOR) : SHAPE_NEUTRAL;
+    let style = `background:${base}`;
+    if (item.pattern) {
+      style += `;background-image:url("${item.pattern}");background-size:cover`;
+    }
     return h("span", { class: "legend-item" }, [
       h("span", {
         class: `legend-swatch shape-${item.shape ?? "ellipse"}`,
-        style: `background:${item.color}`,
+        style,
       }),
       h("span", { class: "legend-label" }, item.label),
     ]);
@@ -21,28 +30,14 @@ export function createLegend(): Legend {
 
   function update(data: LegendData): void {
     clear(element);
-    element.append(
-      h("div", { class: "legend-group" }, [
-        h("div", { class: "legend-title muted" }, `Colour · ${data.colorTitle}`),
-        h("div", { class: "legend-items" }, data.colorItems.slice(0, 24).map(swatch)),
-      ]),
-    );
-    if (data.shapeItems.length > 1) {
+    for (const group of data.groups) {
       element.append(
         h("div", { class: "legend-group" }, [
-          h("div", { class: "legend-title muted" }, "Shape · node type"),
+          h("div", { class: "legend-title muted" }, group.title),
           h(
             "div",
             { class: "legend-items" },
-            data.shapeItems.map((it) =>
-              h("span", { class: "legend-item" }, [
-                h("span", {
-                  class: `legend-swatch shape-${it.shape ?? "ellipse"}`,
-                  style: "background:#9aa7ff",
-                }),
-                h("span", { class: "legend-label" }, it.label),
-              ]),
-            ),
+            group.items.map((it) => swatch(it, group.channel)),
           ),
         ]),
       );

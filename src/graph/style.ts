@@ -1,18 +1,27 @@
 import type cytoscape from "cytoscape";
-import type { GraphModel } from "../types";
+import type { GNode, GraphModel } from "../types";
 import type { EncodingConfig } from "../state";
-import { NO_VALUE_COLOR, colorScale, shapeScale } from "./palette";
+import {
+  NO_VALUE_COLOR,
+  colorScale,
+  patternScale,
+  shapeScale,
+} from "./palette";
 
+export type LegendChannel = "color" | "shape" | "pattern";
 export interface LegendItem {
   label: string;
-  color: string;
+  color?: string;
   shape?: string;
+  pattern?: string;
+}
+export interface LegendGroup {
+  channel: LegendChannel;
+  title: string;
+  items: LegendItem[];
 }
 export interface LegendData {
-  colorTitle: string;
-  colorItems: LegendItem[];
-  shapeTitle: string;
-  shapeItems: LegendItem[];
+  groups: LegendGroup[];
 }
 
 const SIZE_MIN = 18;
@@ -100,6 +109,17 @@ export function baseStylesheet(): unknown[] {
       selector: "node.highlight",
       style: { "border-color": "#ffffff", "z-index": 15 },
     },
+    // Pattern channel: only applied to nodes that actually carry a texture, so
+    // un-patterned nodes never get a (broken, empty-string) background-image.
+    {
+      selector: "node.patterned",
+      style: {
+        "background-image": "data(pattern)",
+        "background-fit": "cover",
+        "background-clip": "node",
+        "background-image-opacity": 0.5,
+      },
+    },
     { selector: "edge.highlight", style: { opacity: 1, width: 2.5, "z-index": 15 } },
     { selector: ".dimmed", style: { opacity: 0.08, "text-opacity": 0.04 } },
     {
@@ -111,42 +131,57 @@ export function baseStylesheet(): unknown[] {
   return style;
 }
 
-/** Compute and write color/shape/size onto every element for an encoding,
- *  returning legend data for the UI. */
+/** The categorical values a dimension ("type" or a facet) spans. */
+function domainFor(graph: GraphModel, dim: string): string[] {
+  return dim === "type" ? graph.nodeTypes : (graph.facets[dim] ?? []);
+}
+
+/** The value a node takes for a dimension (first value for multi-value facets). */
+function valueFor(node: GNode, dim: string): string | undefined {
+  return dim === "type" ? node.type : node.categories[dim]?.[0];
+}
+
+function dimTitle(dim: string): string {
+  return dim === "type" ? "node type" : dim;
+}
+
+/** Compute and write colour/shape/pattern/size onto every element for an
+ *  encoding, returning legend data for the UI. Colour, shape and pattern are
+ *  three independent channels, each bound to its own dimension. */
 export function applyEncoding(
   cy: cytoscape.Core,
   graph: GraphModel,
   enc: EncodingConfig,
 ): LegendData {
-  const shapes = shapeScale(graph.nodeTypes);
-  const typeColors = colorScale(graph.nodeTypes);
+  const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
 
-  // ---- color ----
-  let colorTitle: string;
-  let colorItems: LegendItem[];
-  let colorFor: (id: string, type: string) => string;
+  // ---- colour (always on) ----
+  const colorVals = domainFor(graph, enc.colorBy);
+  const colors = colorScale(colorVals);
+  const colorFor = (n: GNode): string => {
+    const v = valueFor(n, enc.colorBy);
+    return v ? (colors.get(v) ?? NO_VALUE_COLOR) : NO_VALUE_COLOR;
+  };
 
-  if (enc.colorBy === "type") {
-    colorTitle = "Node type";
-    colorItems = graph.nodeTypes.map((t) => ({
-      label: t,
-      color: typeColors.get(t)!,
-    }));
-    colorFor = (_id, type) => typeColors.get(type) ?? NO_VALUE_COLOR;
-  } else {
-    const values = graph.facets[enc.colorBy] ?? [];
-    const cs = colorScale(values);
-    colorTitle = enc.colorBy;
-    colorItems = values.map((v) => ({ label: v, color: cs.get(v)! }));
-    colorItems.push({ label: "(none)", color: NO_VALUE_COLOR });
-    const firstValByNode = new Map(
-      graph.nodes.map((n) => [n.id, n.categories[enc.colorBy]?.[0]]),
-    );
-    colorFor = (id) => {
-      const v = firstValByNode.get(id);
-      return v ? (cs.get(v) ?? NO_VALUE_COLOR) : NO_VALUE_COLOR;
-    };
-  }
+  // ---- shape (off when "uniform") ----
+  const shapeUniform = enc.shapeBy === "uniform";
+  const shapeVals = shapeUniform ? [] : domainFor(graph, enc.shapeBy);
+  const shapes = shapeScale(shapeVals);
+  const shapeFor = (n: GNode): string => {
+    if (shapeUniform) return "ellipse";
+    const v = valueFor(n, enc.shapeBy);
+    return v ? (shapes.get(v) ?? "ellipse") : "ellipse";
+  };
+
+  // ---- pattern (off when "none") ----
+  const patternOff = enc.patternBy === "none";
+  const patternVals = patternOff ? [] : domainFor(graph, enc.patternBy);
+  const patterns = patternScale(patternVals);
+  const patternFor = (n: GNode): string => {
+    if (patternOff) return "";
+    const v = valueFor(n, enc.patternBy);
+    return v ? (patterns.get(v) ?? "") : "";
+  };
 
   // ---- size ----
   let sizeFor: (n: cytoscape.NodeSingular) => number;
@@ -175,25 +210,63 @@ export function applyEncoding(
   const edgeColors = colorScale(graph.edgeTypes);
 
   cy.batch(() => {
-    cy.nodes().forEach((n) => {
-      const type = n.data("type");
-      n.data("color", colorFor(n.id(), type));
-      n.data("shape", shapes.get(type) ?? "ellipse");
-      n.data("size", Math.round(sizeFor(n)));
+    cy.nodes().forEach((cn) => {
+      const n = nodeById.get(cn.id());
+      if (!n) return;
+      cn.data("color", colorFor(n));
+      cn.data("shape", shapeFor(n));
+      cn.data("size", Math.round(sizeFor(cn)));
+      const pat = patternFor(n);
+      cn.data("pattern", pat);
+      if (pat) cn.addClass("patterned");
+      else cn.removeClass("patterned");
     });
     cy.edges().forEach((e) => {
       e.data("color", edgeColors.get(e.data("type")) ?? "#3c4655");
     });
   });
 
-  return {
-    colorTitle,
-    colorItems,
-    shapeTitle: "Node type",
-    shapeItems: graph.nodeTypes.map((t) => ({
-      label: t,
-      shape: shapes.get(t) ?? "ellipse",
-      color: typeColors.get(t) ?? NO_VALUE_COLOR,
+  // ---- legend ----
+  const groups: LegendGroup[] = [];
+  groups.push({
+    channel: "color",
+    title: `Colour · ${dimTitle(enc.colorBy)}`,
+    items: legendItems(colorVals, enc.colorBy, (v) => ({
+      label: v,
+      color: colors.get(v),
     })),
-  };
+  });
+  if (!shapeUniform && shapeVals.length > 1) {
+    groups.push({
+      channel: "shape",
+      title: `Shape · ${dimTitle(enc.shapeBy)}`,
+      items: legendItems(shapeVals, enc.shapeBy, (v) => ({
+        label: v,
+        shape: shapes.get(v),
+      })),
+    });
+  }
+  if (!patternOff && patternVals.length > 1) {
+    groups.push({
+      channel: "pattern",
+      title: `Pattern · ${dimTitle(enc.patternBy)}`,
+      items: legendItems(patternVals, enc.patternBy, (v) => ({
+        label: v,
+        pattern: patterns.get(v),
+      })),
+    });
+  }
+  return { groups };
+}
+
+/** Build legend items for a dimension, appending "(none)" for facets (whose
+ *  nodes may lack a value). */
+function legendItems(
+  values: string[],
+  dim: string,
+  make: (v: string) => LegendItem,
+): LegendItem[] {
+  const items = values.slice(0, 24).map(make);
+  if (dim !== "type") items.push({ label: "(none)" });
+  return items;
 }
