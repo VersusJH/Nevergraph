@@ -116,6 +116,10 @@ export interface CollectionMapping {
   categoryFields: string[];
   /** Numeric fields usable for node sizing / range filters. */
   numericFields: string[];
+  /** Field paths shown in the hover tooltip body (in order). Optional for
+   *  backward-compat with profiles saved before this existed — treat a missing
+   *  value as falling back to `categoryFields`. */
+  tooltipFields?: string[];
   arcs: ArcMapping[];
 }
 
@@ -177,5 +181,7 @@ export interface GraphModel {
   facets: Record<string, string[]>;
   /** Numeric field name -> [min, max] across all nodes. */
   numericRanges: Record<string, [number, number]>;
+  /** Node type -> ordered field paths to show in the hover tooltip. */
+  tooltipFieldsByType: Record<string, string[]>;
   report: ValidationReport;
 }

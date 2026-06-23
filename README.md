@@ -50,6 +50,9 @@ confirm or override every choice:
 - Drag, hover-highlight + tooltip, click-to-select with a full detail panel
   (all fields, long text, clickable in/out neighbours), right-click context
   menu (focus neighbourhood, hide, pin), double-click to focus.
+- **Configurable hover tooltips:** choose per node type which fields appear on
+  hover (a "Show on hover" picker in the wizard, saved with the profile). The
+  tooltip and detail panel share one formatter, so values render consistently.
 - Left panel: toggle node/edge types, per-facet value filters, text search,
   hide-vs-dim modes.
 - **Save mapping profiles** (kept in `localStorage`, keyed by dataset shape) so

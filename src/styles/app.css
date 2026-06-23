@@ -220,11 +220,16 @@ summary.filter-title { cursor: pointer; }
 .cy-tooltip {
   position: absolute; transform: translate(-50%, -100%); pointer-events: none;
   background: rgba(20, 25, 33, 0.97); border: 1px solid var(--border-2); border-radius: var(--radius-sm);
-  padding: 6px 9px; font-size: 12px; max-width: 240px; z-index: 30; box-shadow: var(--shadow);
-  display: flex; flex-direction: column; gap: 2px;
+  padding: 6px 9px; font-size: 12px; max-width: 280px; z-index: 30; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 3px;
 }
+.cy-tooltip .tip-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.cy-tooltip .tip-label { font-weight: 650; }
 .cy-tooltip .tip-type { color: var(--accent); font-size: 10.5px; }
-.cy-tooltip .tip-cat { color: var(--muted); font-size: 11px; }
+/* Compact, standardised field rows — shares the detail panel's value markup. */
+.cy-tooltip .field-list { grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; font-size: 11px; }
+.cy-tooltip .field-list dt { font-size: 10.5px; }
+.cy-tooltip .mini-chip { font-size: 10px; padding: 0 5px; }
 .cy-ctxmenu {
   position: fixed; z-index: 100; background: var(--surface-2); border: 1px solid var(--border-2);
   border-radius: var(--radius-sm); padding: 4px; box-shadow: var(--shadow); display: flex; flex-direction: column; min-width: 160px;

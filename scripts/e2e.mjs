@@ -316,6 +316,99 @@ try {
   );
   await page.screenshot({ path: `${SHOT_DIR}/11-split.png` });
 
+  // ---- hover tooltip: wizard-chosen fields + standardised formatting ----
+  await page.goto(URL, { waitUntil: "networkidle0" });
+  await page.$$eval(
+    ".example-card",
+    (els, label) => els.find((e) => e.textContent.includes(label)).click(),
+    "Neverwas",
+  );
+  await page.waitForSelector(".wizard", { timeout: 8000 });
+  const addedHover = await page.evaluate(() => {
+    const card = [...document.querySelectorAll(".coll-card")].find(
+      (c) => c.querySelector(".coll-title strong")?.textContent === "storylets",
+    );
+    const sub = [...card.querySelectorAll(".subsection")].find(
+      (s) => s.querySelector("h4")?.textContent === "Show on hover",
+    );
+    const chip = [...sub.querySelectorAll(".chip")].find((b) => b.textContent === "text");
+    if (!chip) return false;
+    chip.click(); // add the 'text' field to the storylet hover tooltip
+    return true;
+  });
+  assert(addedHover, "added 'text' to storylets 'Show on hover'");
+  await page.click(".btn-primary");
+  await page.waitForFunction(() => window.__cy && window.__cy.nodes().length > 0, { timeout: 10000 });
+  // stabilise positions (default layout is live physics) before hovering
+  await page.evaluate(() => {
+    const sel = document.querySelectorAll(".toolbar-mid select")[0];
+    sel.value = "fcose";
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await sleep(1300);
+  const hoverTarget = await page.evaluate(() => {
+    const n = window.__cy
+      .nodes()
+      .filter((x) => x.data("type") === "storylet")
+      .sort((a, b) => b.degree() - a.degree())
+      .first();
+    const rect = document.querySelector(".cy").getBoundingClientRect();
+    const rp = n.renderedPosition();
+    const g = window.__nevergraph().graph.nodes.find((x) => x.id === n.id());
+    return { x: rect.left + rp.x, y: rect.top + rp.y, label: g.label, textVal: String(g.data.text ?? "").slice(0, 12) };
+  });
+  await page.mouse.move(hoverTarget.x, hoverTarget.y);
+  await sleep(250);
+  const tip = await page.evaluate(() => {
+    const t = document.querySelector(".cy-tooltip");
+    return {
+      keys: [...t.querySelectorAll("dt")].map((e) => e.textContent),
+      label: t.querySelector(".tip-label")?.textContent ?? "",
+      text: t.textContent ?? "",
+    };
+  });
+  assert(tip.keys.includes("text"), `tooltip shows the wizard-chosen field 'text' (keys=[${tip.keys}])`);
+  assert(tip.keys.includes("asset"), `tooltip keeps default category field 'asset'`);
+  assert(tip.label === hoverTarget.label, `tooltip header shows the node label`);
+  assert(!!hoverTarget.textVal && tip.text.includes(hoverTarget.textVal), `tooltip shows the field's value`);
+  await page.screenshot({ path: `${SHOT_DIR}/12-tooltip.png` });
+
+  // export and re-open offline: the standalone viewer must use the same fields
+  for (const f of await readdir(SHOT_DIR)) {
+    if (/-nevergraph\.html$/.test(f)) await unlink(`${SHOT_DIR}/${f}`);
+  }
+  const client2 = await page.createCDPSession();
+  await client2.send("Page.setDownloadBehavior", { behavior: "allow", downloadPath: SHOT_DIR });
+  await page.click(".toolbar-right .btn-accent");
+  let exp2 = null;
+  for (let i = 0; i < 50 && !exp2; i++) {
+    const fs = await readdir(SHOT_DIR);
+    exp2 = fs.find((n) => /-nevergraph\.html$/.test(n)) || null;
+    if (!exp2) await sleep(150);
+  }
+  assert(!!exp2, `tooltip export produced file: ${exp2}`);
+  if (exp2) {
+    await sleep(300);
+    const vp = await browser.newPage();
+    await vp.goto(`file://${SHOT_DIR}/${exp2}`, { waitUntil: "networkidle0" });
+    await vp.waitForFunction(() => window.__cy && window.__cy.nodes().length > 0, { timeout: 10000 });
+    await sleep(1300);
+    const vt = await vp.evaluate(() => {
+      const n = window.__cy.nodes().filter((x) => x.data("type") === "storylet").sort((a, b) => b.degree() - a.degree()).first();
+      const rect = document.querySelector(".cy").getBoundingClientRect();
+      const rp = n.renderedPosition();
+      return { x: rect.left + rp.x, y: rect.top + rp.y };
+    });
+    await vp.mouse.move(vt.x, vt.y);
+    await sleep(250);
+    const vkeys = await vp.evaluate(() =>
+      [...document.querySelectorAll(".cy-tooltip dt")].map((e) => e.textContent),
+    );
+    assert(vkeys.includes("text"), `exported viewer tooltip uses the chosen fields (keys=[${vkeys}])`);
+    await vp.screenshot({ path: `${SHOT_DIR}/13-tooltip-export.png` });
+    await vp.close();
+  }
+
   assert(pageErrors.length === 0, `no page errors (${pageErrors.length}): ${pageErrors.slice(0, 3).join(" | ")}`);
 } catch (err) {
   fail(`exception: ${err.stack || err}`);

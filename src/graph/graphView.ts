@@ -2,11 +2,13 @@ import cytoscape from "cytoscape";
 import fcose from "cytoscape-fcose";
 import dagre from "cytoscape-dagre";
 import cola from "cytoscape-cola";
-import type { GNode, GraphModel } from "../types";
+import type { GNode, GraphModel, JsonValue } from "../types";
 import type { EncodingConfig, FilterState, Selection } from "../state";
 import { applyEncoding, baseStylesheet, type LegendData } from "./style";
 import { toElements } from "./elements";
 import { layoutById, physicsOptions, PHYSICS_LAYOUT_ID } from "./layouts";
+import { h } from "../ui/dom";
+import { renderFieldRows } from "../ui/fieldFormat";
 
 let registered = false;
 function registerExtensions(): void {
@@ -110,10 +112,24 @@ export function createGraphView(
   function showTip(node: cytoscape.NodeSingular): void {
     const n = nodeById.get(node.id());
     if (!n) return;
-    const cats = Object.entries(n.categories)
-      .map(([k, v]) => `<span class="tip-cat">${esc(k)}: ${esc(v.join(", "))}</span>`)
-      .join("");
-    tip.innerHTML = `<strong>${esc(n.label)}</strong><span class="tip-type">${esc(n.type)}</span>${cats}`;
+    // Per-node-type field list, configured in the wizard (rides in the graph
+    // model). Skip fields the node doesn't carry so it degrades gracefully.
+    const fields = (graph?.tooltipFieldsByType ?? {})[n.type] ?? [];
+    const entries: [string, JsonValue][] = [];
+    for (const f of fields) {
+      const v = n.data[f];
+      if (v === null || v === undefined) continue;
+      if (typeof v === "string" && v === "") continue;
+      if (Array.isArray(v) && v.length === 0) continue;
+      entries.push([f, v]);
+    }
+    tip.replaceChildren(
+      h("div", { class: "tip-head" }, [
+        h("strong", { class: "tip-label" }, n.label),
+        h("span", { class: "tip-type" }, n.type),
+      ]),
+    );
+    if (entries.length) tip.append(renderFieldRows(entries, { compact: true }));
     const p = node.renderedPosition();
     const size = node.renderedHeight();
     tip.style.left = `${p.x}px`;
@@ -346,10 +362,4 @@ export function createGraphView(
       cy.destroy();
     },
   };
-}
-
-function esc(s: string): string {
-  return s.replace(/[&<>"]/g, (c) =>
-    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;",
-  );
 }

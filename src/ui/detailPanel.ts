@@ -1,6 +1,6 @@
-import { h, clear, truncate } from "./dom";
+import { h, clear } from "./dom";
 import type { GraphModel, GEdge, GNode, JsonValue } from "../types";
-import { isPlainObject, scalarToString } from "../mapping/paths";
+import { renderFieldRows } from "./fieldFormat";
 
 export interface DetailPanel {
   element: HTMLElement;
@@ -122,38 +122,5 @@ function chipRow(categories: Record<string, string[]>): HTMLElement | null {
 }
 
 function fieldList(data: Record<string, JsonValue>): HTMLElement {
-  const dl = h("dl", { class: "field-list" });
-  for (const [k, v] of Object.entries(data)) {
-    dl.append(h("dt", {}, k), renderValue(v));
-  }
-  return dl;
-}
-
-function renderValue(v: JsonValue): HTMLElement {
-  if (v === null || v === undefined)
-    return h("dd", { class: "muted" }, "—");
-  if (Array.isArray(v)) {
-    if (v.length === 0) return h("dd", { class: "muted" }, "(empty)");
-    const allScalar = v.every((e) => !Array.isArray(e) && !isPlainObject(e));
-    if (allScalar)
-      return h(
-        "dd",
-        { class: "val-chips" },
-        v.map((e) => h("span", { class: "mini-chip" }, scalarToString(e as JsonValue))),
-      );
-    return h("dd", {}, [collapsible(`${v.length} items`, v)]);
-  }
-  if (isPlainObject(v)) return h("dd", {}, [collapsible("object", v)]);
-  const s = scalarToString(v);
-  if (s.length > 140)
-    return h("dd", { class: "val-long" }, s);
-  return h("dd", {}, s === "" ? h("span", { class: "muted" }, "—") : s);
-}
-
-function collapsible(summary: string, value: JsonValue): HTMLElement {
-  const det = h("details", { class: "val-json" }, [
-    h("summary", {}, summary),
-    h("pre", {}, truncate(JSON.stringify(value, null, 2), 2000)),
-  ]);
-  return det;
+  return renderFieldRows(Object.entries(data));
 }

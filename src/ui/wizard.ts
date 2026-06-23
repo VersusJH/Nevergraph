@@ -264,6 +264,14 @@ export function renderWizard(
     const numCandidates = scalars.filter(
       (f) => f.valueType === "number" && !f.looksLikeId,
     );
+    // Fields offerable in the hover tooltip: any displayable scalar/array-scalar
+    // except the label (already shown as the tooltip header).
+    const hoverCandidates = cc.fields.filter(
+      (f) =>
+        f.path !== m.labelField &&
+        (f.kind === "scalar" ||
+          (f.kind === "array-scalar" && f.distinctCount > 0)),
+    );
 
     const enableBox = h("input", {
       type: "checkbox",
@@ -284,6 +292,9 @@ export function renderWizard(
 
     if (!m.enabled)
       return h("section", { class: "coll-card disabled" }, headerRow);
+
+    // Default the hover-field list (legacy/imported profiles may lack it).
+    m.tooltipFields ??= [...m.categoryFields];
 
     const identity = h("div", { class: "field-grid" }, [
       labeled(
@@ -380,11 +391,31 @@ export function renderWizard(
         ])
       : null;
 
+    const hoverBlock = h("div", { class: "subsection" }, [
+      h("h4", {}, "Show on hover"),
+      hoverCandidates.length
+        ? h(
+            "div",
+            { class: "chip-row" },
+            hoverCandidates.map((f) =>
+              chipToggle(f.path, (m.tooltipFields ?? []).includes(f.path), (on) => {
+                const cur = m.tooltipFields ?? [];
+                m.tooltipFields = on
+                  ? [...cur, f.path]
+                  : cur.filter((x) => x !== f.path);
+                updatePreview();
+              }),
+            ),
+          )
+        : h("p", { class: "muted" }, "No fields available."),
+    ]);
+
     return h("section", { class: "coll-card" }, [
       headerRow,
       identity,
       arcsBlock,
       catBlock,
+      hoverBlock,
       numBlock,
     ]);
   }

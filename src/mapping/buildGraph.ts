@@ -52,6 +52,7 @@ export function buildGraph(
   const byRawId = new Map<string, GNode[]>();
   const duplicateIds: string[] = [];
   const skippedCollections: string[] = [];
+  const tooltipFieldsByType: Record<string, string[]> = {};
 
   const mappingByName = new Map(
     profile.collections.map((c) => [c.collection, c]),
@@ -67,6 +68,10 @@ export function buildGraph(
     const records = recordsForCollection(root, cc);
     records.forEach((record, index) => {
       const type = nodeTypeFor(record, m);
+      // Tooltip field list is per node type; fall back to categories for
+      // profiles saved before tooltipFields existed.
+      if (!(type in tooltipFieldsByType))
+        tooltipFieldsByType[type] = m.tooltipFields ?? m.categoryFields;
       let rawId = scalarToString(getField(record, m.idField));
       if (rawId === "") rawId = `${type}#${index}`;
       const id = namespacedId(type, rawId);
@@ -220,6 +225,7 @@ export function buildGraph(
     edgeTypes,
     facets: facetsOut,
     numericRanges,
+    tooltipFieldsByType,
     report: {
       nodeCount: nodes.length,
       edgeCount: edges.length,

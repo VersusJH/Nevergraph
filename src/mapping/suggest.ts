@@ -164,6 +164,8 @@ function suggestCollection(c: CollectionCatalog): CollectionMapping {
     nodeType,
     categoryFields,
     numericFields,
+    // Default the hover tooltip to the category facets (matches prior behaviour).
+    tooltipFields: [...categoryFields],
     arcs,
   };
 }
