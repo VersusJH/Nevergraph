@@ -9,6 +9,7 @@ export interface ExportOptions {
   graph: GraphModel;
   encoding: EncodingConfig;
   layout: string;
+  spread: number;
   fileName: string | null;
 }
 
@@ -21,6 +22,7 @@ export function exportStandaloneHtml(opts: ExportOptions): void {
     graph: opts.graph,
     encoding: opts.encoding,
     layout: opts.layout,
+    spread: opts.spread,
     fileName: opts.fileName,
   };
   // Escape "<" so the JSON can never break out of the <script> tag.

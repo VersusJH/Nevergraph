@@ -41,6 +41,13 @@ confirm or override every choice:
 - **Live physics (default):** a continuous force simulation where dragging a
   node pushes its neighbours and filtering lets the graph re-settle into the
   freed space. Switch to a static layout any time.
+- **Spread slider:** scales the layout's edge length / repulsion so you can pull
+  a clumped network apart into separated clusters; applies live to whichever
+  layout is active and is carried into exports.
+- **Cluster grouping:** a "Group" dropdown wraps nodes into labeled boxes by
+  node type or any facet (Cytoscape compound nodes). While grouping is on it
+  uses the force layout so the clusters separate; toggling it off restores your
+  layout. Carried into exports.
 - Force, hierarchy (DAG), concentric, circle and grid layouts.
 - **Three independent encoding channels** — colour, shape and pattern (SVG
   texture) can each be bound to node type or any category facet, so you can show

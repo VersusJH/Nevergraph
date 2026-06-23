@@ -12,6 +12,7 @@ interface Payload {
   graph: GraphModel;
   encoding: EncodingConfig;
   layout: string;
+  spread?: number;
   fileName?: string;
 }
 
@@ -47,6 +48,7 @@ function boot(p: Payload): void {
   const state = initialState();
   state.encoding = { ...state.encoding, ...p.encoding };
   state.layout = p.layout;
+  state.spread = p.spread ?? state.spread;
   state.fileName = p.fileName ?? null;
 
   let graphView: GraphView;
@@ -98,6 +100,15 @@ function boot(p: Payload): void {
         },
       ),
       control(
+        "Group",
+        ["none", "type", ...Object.keys(graph.facets)].map((o) => [o, o]),
+        state.encoding.groupBy,
+        (v) => {
+          state.encoding.groupBy = v;
+          graphView.setGrouping(v);
+        },
+      ),
+      control(
         "Size",
         ["degree", "uniform", ...Object.keys(graph.numericRanges)].map((o) => [o, o]),
         String(state.encoding.sizeBy),
@@ -106,6 +117,20 @@ function boot(p: Payload): void {
           graphView.setEncoding(state.encoding);
         },
       ),
+      h("label", { class: "toolbar-control" }, [
+        h("span", { class: "toolbar-clabel muted" }, "Spread"),
+        h("input", {
+          class: "toolbar-slider",
+          type: "range",
+          min: "0.4",
+          max: "4",
+          step: "0.1",
+          value: String(state.spread),
+          title: "Spread nodes apart / cluster",
+          oninput: (e: Event) =>
+            graphView.setSpread(parseFloat((e.target as HTMLInputElement).value)),
+        }),
+      ]),
       h("input", {
         class: "toolbar-search",
         type: "search",
@@ -136,6 +161,7 @@ function boot(p: Payload): void {
     onSelect: (sel) => detail.show(sel, graph),
     onLegend: (d) => legend.update(d),
   });
+  graphView.setSpread(state.spread);
   graphView.setGraph(graph, state.layout, state.encoding);
   graphView.applyFilters(state.filters);
   (window as unknown as { __cy: unknown }).__cy = graphView.getCy();

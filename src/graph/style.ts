@@ -46,7 +46,9 @@ function scaleLinear(
 export function baseStylesheet(): unknown[] {
   const style: unknown[] = [
     {
-      selector: "node",
+      // Leaf (real) nodes only — compound group parents auto-size to fit their
+      // children, so they must NOT inherit width/height/shape from data().
+      selector: "node:childless",
       style: {
         "background-color": "data(color)",
         shape: "data(shape)",
@@ -126,6 +128,29 @@ export function baseStylesheet(): unknown[] {
       selector: "node.pinned",
       style: { "border-color": "#f4a259" },
     },
+    // Cluster grouping: compound parent boxes with a label at the top.
+    {
+      selector: "node.group",
+      style: {
+        shape: "round-rectangle",
+        "background-color": "#7c9eff",
+        "background-opacity": 0.06,
+        "border-color": "#5a6b86",
+        "border-width": 1.5,
+        "border-style": "dashed",
+        label: "data(label)",
+        color: "#aeb9cc",
+        "font-size": 12,
+        "font-weight": 600,
+        "text-valign": "top",
+        "text-halign": "center",
+        "text-margin-y": -2,
+        padding: 18,
+        "min-zoomed-font-size": 5,
+        "z-index": 0,
+      },
+    },
+    { selector: "node.group:selected", style: { "border-color": "#ffffff" } },
     { selector: ".hidden", style: { display: "none" } },
   ];
   return style;

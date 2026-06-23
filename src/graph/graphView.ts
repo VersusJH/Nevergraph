@@ -28,6 +28,8 @@ export interface GraphView {
   setGraph: (graph: GraphModel, layoutId: string, enc: EncodingConfig) => void;
   setEncoding: (enc: EncodingConfig) => void;
   runLayout: (id: string) => void;
+  setSpread: (spread: number) => void;
+  setGrouping: (dimension: string) => void;
   applyFilters: (filters: FilterState) => void;
   focus: (nodeId: string) => void;
   clearFocus: () => void;
@@ -61,13 +63,54 @@ export function createGraphView(
   let physicsOn = false;
   let physicsSim: cytoscape.Layouts | null = null;
   let lastHiddenSig = "";
+  let spread = 1;
+  let userLayoutId: string = PHYSICS_LAYOUT_ID;
+  let groupBy = "none";
 
   const hiddenSig = (): string =>
     cy
       .nodes(".hidden")
+      .not(".group")
       .map((n) => n.id())
       .sort()
       .join("|");
+
+  const groupValue = (n: GNode): string | undefined =>
+    groupBy === "type" ? n.type : n.categories[groupBy]?.[0];
+
+  /** Wrap nodes in compound parent boxes by the current grouping dimension. */
+  function applyGroups(): void {
+    // Tear down any existing groups: orphan children first, then remove parents.
+    const existing = cy.nodes(".group");
+    if (existing.nonempty()) {
+      cy.nodes()
+        .not(".group")
+        .forEach((n) => {
+          if (n.parent().nonempty()) n.move({ parent: null });
+        });
+      existing.remove();
+    }
+    if (groupBy === "none" || !graph) return;
+
+    const parentId = (val: string) => `__grp:${groupBy}:${val}`;
+    const seen = new Set<string>();
+    for (const gn of graph.nodes) {
+      const val = groupValue(gn);
+      if (val && !seen.has(val)) {
+        seen.add(val);
+        cy.add({
+          group: "nodes",
+          data: { id: parentId(val), label: val, isGroup: true },
+          classes: "group",
+        });
+      }
+    }
+    for (const gn of graph.nodes) {
+      const val = groupValue(gn);
+      const ele = cy.getElementById(gn.id);
+      if (ele.nonempty()) ele.move({ parent: val ? parentId(val) : null });
+    }
+  }
 
   function stopPhysics(): void {
     physicsSim?.stop();
@@ -79,18 +122,24 @@ export function createGraphView(
     stopPhysics();
     const eles = cy.elements(":visible");
     if (eles.length === 0) return;
-    physicsSim = eles.layout(physicsOptions(randomize));
+    physicsSim = eles.layout(physicsOptions(randomize, spread));
     physicsSim.run();
     lastHiddenSig = hiddenSig();
   }
 
-  function runLayoutInternal(id: string, isInitial: boolean): void {
+  /** Run the user's chosen layout — but live physics can't separate compound
+   *  groups, so while grouping is on we fall back to the force layout. */
+  function applyLayout(isInitial: boolean): void {
+    const id =
+      groupBy !== "none" && userLayoutId === PHYSICS_LAYOUT_ID
+        ? "fcose"
+        : userLayoutId;
     if (id === PHYSICS_LAYOUT_ID) {
       physicsOn = true;
       if (isInitial) {
         // Seed with a quick force layout for good initial placement, then go
         // live so subsequent drags and filters re-settle with physics.
-        const seed = cy.layout(layoutById("fcose").options());
+        const seed = cy.layout(layoutById("fcose").options(spread));
         seed.one("layoutstop", () => startPhysics(false));
         seed.run();
       } else {
@@ -99,8 +148,21 @@ export function createGraphView(
     } else {
       physicsOn = false;
       stopPhysics();
-      cy.layout(layoutById(id).options()).run();
+      cy.layout(layoutById(id).options(spread)).run();
     }
+  }
+
+  function setSpread(value: number): void {
+    spread = value;
+    if (graph) applyLayout(false); // re-settle with the new spacing
+  }
+
+  function setGrouping(dimension: string): void {
+    groupBy = dimension;
+    if (!graph) return;
+    applyGroups();
+    if (filters) refresh();
+    applyLayout(false);
   }
 
   // ---------------------------- tooltip -----------------------------
@@ -220,8 +282,10 @@ export function createGraphView(
     }
   });
   cy.on("cxttap", "node", (e) => {
+    const node = e.target as cytoscape.NodeSingular;
+    if (node.hasClass("group")) return; // group boxes have no per-node actions
     const oe = e.originalEvent as MouseEvent;
-    showMenu(e.target as cytoscape.NodeSingular, oe.clientX, oe.clientY);
+    showMenu(node, oe.clientX, oe.clientY);
   });
 
   function selectNode(node: cytoscape.NodeSingular): void {
@@ -299,6 +363,13 @@ export function createGraphView(
       });
     });
 
+    // Hide a cluster box once all its members are filtered out.
+    cy.nodes(".group").forEach((g) => {
+      const visibleChildren = g.children().filter((c) => !c.hasClass("hidden"));
+      if (visibleChildren.length) g.removeClass("hidden");
+      else g.addClass("hidden");
+    });
+
     // When hiding/showing changes the visible set, re-settle physics so the
     // remaining nodes reflow into (or out of) the freed space.
     if (physicsOn && hiddenSig() !== lastHiddenSig) startPhysics(false);
@@ -328,14 +399,20 @@ export function createGraphView(
       cy.add(nodes);
       cy.add(edges);
       cb.onLegend(applyEncoding(cy, g, enc));
-      runLayoutInternal(layoutId, true);
+      userLayoutId = layoutId;
+      groupBy = enc.groupBy ?? "none";
+      applyGroups();
+      applyLayout(true);
     },
     setEncoding(enc) {
       if (graph) cb.onLegend(applyEncoding(cy, graph, enc));
     },
     runLayout(id) {
-      runLayoutInternal(id, false);
+      userLayoutId = id;
+      applyLayout(false);
     },
+    setSpread,
+    setGrouping,
     applyFilters(f) {
       filters = f;
       refresh();

@@ -151,9 +151,17 @@ function showGraph(graph: GraphModel): void {
       store.update((s) => (s.encoding.patternBy = v));
       graphView?.setEncoding(store.get().encoding);
     },
+    onGroupBy: (v) => {
+      store.update((s) => (s.encoding.groupBy = v));
+      graphView?.setGrouping(v);
+    },
     onSizeBy: (v) => {
       store.update((s) => (s.encoding.sizeBy = v));
       graphView?.setEncoding(store.get().encoding);
+    },
+    onSpread: (v) => {
+      store.update((s) => (s.spread = v));
+      graphView?.setSpread(v);
     },
     onSearch: (q) => {
       store.update((s) => (s.filters.search = q));
@@ -178,6 +186,7 @@ function showGraph(graph: GraphModel): void {
           graph: s.graph,
           encoding: s.encoding,
           layout: s.layout,
+          spread: s.spread,
           fileName: s.fileName,
         });
         toast("Exported a standalone interactive HTML.");
@@ -203,6 +212,7 @@ function showGraph(graph: GraphModel): void {
     onSelect: (sel) => onSelect(sel),
     onLegend: (data) => legend?.update(data),
   });
+  graphView.setSpread(store.get().spread); // applied by the initial layout below
   graphView.setGraph(graph, store.get().layout, store.get().encoding);
   graphView.applyFilters(store.get().filters);
   (window as unknown as { __cy: unknown }).__cy = graphView.getCy();

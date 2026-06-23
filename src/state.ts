@@ -16,6 +16,8 @@ export interface EncodingConfig {
   shapeBy: string;
   /** "none", "type", or a facet name. */
   patternBy: string;
+  /** "none", "type", or a facet name — wraps members in labeled cluster boxes. */
+  groupBy: string;
   sizeBy: SizeBy;
 }
 
@@ -44,6 +46,8 @@ export interface AppState {
   encoding: EncodingConfig;
   filters: FilterState;
   layout: string;
+  /** Multiplier on layout spacing/repulsion — higher spreads nodes apart. */
+  spread: number;
 }
 
 export function initialState(): AppState {
@@ -55,7 +59,13 @@ export function initialState(): AppState {
     profile: null,
     graph: null,
     selection: null,
-    encoding: { colorBy: "type", shapeBy: "type", patternBy: "none", sizeBy: "degree" },
+    encoding: {
+      colorBy: "type",
+      shapeBy: "type",
+      patternBy: "none",
+      groupBy: "none",
+      sizeBy: "degree",
+    },
     filters: {
       hiddenNodeTypes: new Set(),
       hiddenEdgeTypes: new Set(),
@@ -64,6 +74,7 @@ export function initialState(): AppState {
       mode: "hide",
     },
     layout: "physics",
+    spread: 1,
   };
 }
 

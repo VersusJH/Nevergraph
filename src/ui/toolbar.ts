@@ -8,7 +8,9 @@ export interface ToolbarCallbacks {
   onColorBy: (v: string) => void;
   onShapeBy: (v: string) => void;
   onPatternBy: (v: string) => void;
+  onGroupBy: (v: string) => void;
   onSizeBy: (v: string) => void;
+  onSpread: (v: number) => void;
   onSearch: (q: string) => void;
   onFit: () => void;
   onReconfigure: () => void;
@@ -25,6 +27,7 @@ export function createToolbar(
   const colorOpts = ["type", ...facets];
   const shapeOpts = ["type", "uniform", ...facets];
   const patternOpts = ["none", "type", ...facets];
+  const groupOpts = ["none", "type", ...facets];
   const sizeOpts = ["degree", "uniform", ...Object.keys(graph.numericRanges)];
 
   const search = h("input", {
@@ -45,7 +48,9 @@ export function createToolbar(
       labeledSelect("Colour", colorOpts.map((o) => [o, o]), state.encoding.colorBy, cb.onColorBy),
       labeledSelect("Shape", shapeOpts.map((o) => [o, o]), state.encoding.shapeBy, cb.onShapeBy),
       labeledSelect("Pattern", patternOpts.map((o) => [o, o]), state.encoding.patternBy, cb.onPatternBy),
+      labeledSelect("Group", groupOpts.map((o) => [o, o]), state.encoding.groupBy, cb.onGroupBy),
       labeledSelect("Size", sizeOpts.map((o) => [o, o]), String(state.encoding.sizeBy), cb.onSizeBy),
+      labeledSlider("Spread", 0.4, 4, 0.1, state.spread, cb.onSpread),
       search,
     ]),
     h("div", { class: "toolbar-right" }, [
@@ -75,6 +80,29 @@ function labeledSelect(
         h("option", { value: v, selected: v === current }, l),
       ),
     ),
+  ]);
+}
+
+function labeledSlider(
+  label: string,
+  min: number,
+  max: number,
+  step: number,
+  value: number,
+  onInput: (v: number) => void,
+): HTMLElement {
+  return h("label", { class: "toolbar-control" }, [
+    h("span", { class: "toolbar-clabel muted" }, label),
+    h("input", {
+      class: "toolbar-slider",
+      type: "range",
+      min: String(min),
+      max: String(max),
+      step: String(step),
+      value: String(value),
+      title: "Spread nodes apart / cluster",
+      oninput: (e: Event) => onInput(parseFloat((e.target as HTMLInputElement).value)),
+    }),
   ]);
 }
 

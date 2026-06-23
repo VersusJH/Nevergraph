@@ -271,6 +271,88 @@ try {
   assert(larp.e > 0, `larp edges = ${larp.e}`);
   await page.screenshot({ path: `${SHOT_DIR}/08-larp.png` });
 
+  // ---- Spread slider expands the layout (separates clusters) ----
+  // Use a static layout so the bounding box is stable to measure.
+  await page.evaluate(() => {
+    const sel = document.querySelectorAll(".toolbar-mid select")[0];
+    sel.value = "fcose";
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await sleep(1600);
+  const area1 = await page.evaluate(() => {
+    const b = window.__cy.elements().boundingBox();
+    return b.w * b.h;
+  });
+  await page.evaluate(() => {
+    const sl = document.querySelector(".toolbar-slider");
+    sl.value = "4";
+    sl.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(1800);
+  const area2 = await page.evaluate(() => {
+    const b = window.__cy.elements().boundingBox();
+    return b.w * b.h;
+  });
+  assert(area2 > area1 * 1.5, `spread slider expands layout (${Math.round(area1)} -> ${Math.round(area2)} px²)`);
+  await page.screenshot({ path: `${SHOT_DIR}/14-spread.png` });
+
+  // ---- cluster grouping into labeled compound boxes ----
+  const setGroup = (v) =>
+    page.evaluate((val) => {
+      const c = [...document.querySelectorAll(".toolbar-mid .toolbar-control")].find(
+        (x) => x.querySelector(".toolbar-clabel")?.textContent === "Group",
+      );
+      const sel = c.querySelector("select");
+      sel.value = val;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }, v);
+  // reset spread to 1× for a representative grouping view
+  await page.evaluate(() => {
+    const sl = document.querySelector(".toolbar-slider");
+    sl.value = "1";
+    sl.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(800);
+  await setGroup("Genere");
+  await sleep(1800);
+  const grouped = await page.evaluate(() => ({
+    parents: window.__cy.nodes(":parent").length,
+    children: window.__cy.nodes(":child").length,
+  }));
+  assert(grouped.parents === 3, `grouped by Genere → ${grouped.parents} cluster boxes (want 3)`);
+  assert(grouped.children > 0, `nodes placed into clusters (${grouped.children})`);
+  await page.screenshot({ path: `${SHOT_DIR}/15-group.png` });
+
+  // exported HTML must keep the cluster boxes
+  for (const f of await readdir(SHOT_DIR)) {
+    if (/-nevergraph\.html$/.test(f)) await unlink(`${SHOT_DIR}/${f}`);
+  }
+  const c3 = await page.createCDPSession();
+  await c3.send("Page.setDownloadBehavior", { behavior: "allow", downloadPath: SHOT_DIR });
+  await page.click(".toolbar-right .btn-accent");
+  let exp3 = null;
+  for (let i = 0; i < 50 && !exp3; i++) {
+    const fs = await readdir(SHOT_DIR);
+    exp3 = fs.find((n) => /-nevergraph\.html$/.test(n)) || null;
+    if (!exp3) await sleep(150);
+  }
+  assert(!!exp3, `grouped export produced file: ${exp3}`);
+  if (exp3) {
+    await sleep(300);
+    const vg = await browser.newPage();
+    await vg.goto(`file://${SHOT_DIR}/${exp3}`, { waitUntil: "networkidle0" });
+    await vg.waitForFunction(() => window.__cy && window.__cy.nodes().length > 0, { timeout: 10000 });
+    await sleep(1200);
+    const vparents = await vg.evaluate(() => window.__cy.nodes(":parent").length);
+    assert(vparents === 3, `exported viewer keeps cluster boxes (parents=${vparents})`);
+    await vg.close();
+  }
+
+  await setGroup("none");
+  await sleep(700);
+  const ungrouped = await page.evaluate(() => window.__cy.nodes(":parent").length);
+  assert(ungrouped === 0, `ungrouping removes cluster boxes (parents=${ungrouped})`);
+
   // ---- "Split types by" — node types come from a field, not the collection ----
   await page.goto(URL, { waitUntil: "networkidle0" });
   await page.$$eval(

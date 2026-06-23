@@ -150,6 +150,7 @@ button { font-family: inherit; cursor: pointer; }
 .toolbar-control { display: flex; align-items: center; gap: 5px; }
 .toolbar-clabel { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .toolbar-search { background: var(--surface-2); border: 1px solid var(--border-2); color: var(--text); border-radius: var(--radius-sm); padding: 6px 10px; font-size: 13px; min-width: 150px; }
+.toolbar-slider { width: 96px; accent-color: var(--accent); cursor: pointer; vertical-align: middle; }
 
 .workspace { flex: 1; display: flex; min-height: 0; }
 .panel { width: 270px; flex-shrink: 0; overflow-y: auto; background: var(--surface); }
